@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Recipe Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍽️ Food Recipe Analyzer</h1>
+            <p>Point your camera at food and discover recipes!</p>
+        </header>
+
+        <main>
+            <!-- Camera Section -->
+            <div class="camera-section">
+                <video id="camera" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+
+                <div class="camera-controls">
+                    <button id="analyze-btn" class="analyze-btn">
+                        📸 Analyze Food
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Section -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Analyzing your food...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="results hidden">
+                <div class="food-analysis">
+                    <h2>🔍 Food Detected:</h2>
+                    <p id="food-detected"></p>
+                </div>
+
+                <div class="audio-section">
+                    <h3>🎵 Listen to Recipe Ideas:</h3>
+                    <audio id="audio-player" controls></audio>
+                </div>
+
+                <div class="recipes-section">
+                    <h3>📖 Choose a Recipe:</h3>
+                    <div class="recipe-buttons">
+                        <button class="recipe-btn" data-recipe="1">Recipe 1</button>
+                        <button class="recipe-btn" data-recipe="2">Recipe 2</button>
+                        <button class="recipe-btn" data-recipe="3">Recipe 3</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe Detail Modal -->
+            <div id="recipe-modal" class="modal hidden">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <div id="recipe-detail"></div>
+                </div>
+            </div>
+
+            <!-- API Key Setup -->
+            <div id="api-setup" class="api-setup">
+                <div class="api-input-group">
+                    <label for="groq-api-key">Groq API Key:</label>
+                    <input type="password" id="groq-api-key" placeholder="Enter your Groq API key">
+                    <button id="save-api-key">Save</button>
+                </div>
+                <p class="api-note">Get your API key from <a href="https://console.groq.com/" target="_blank">Groq Console</a></p>
+            </div>
+        </main>
+    </div>
+
+    <script src="camera.js"></script>
+    <script src="groq-api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
