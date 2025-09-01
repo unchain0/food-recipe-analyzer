@@ -49,11 +49,3 @@ Uma aplicação web mobile que usa IA da Groq para analisar alimentos através d
 ## 🌐 Demo
 
 Acesse: [https://food-recipe-analyzer.netlify.app](https://food-recipe-analyzer.netlify.app)
-
-## 📄 Licença
-
-MIT License - veja o arquivo LICENSE para detalhes.
-
----
-
-Desenvolvido com ❤️ usando Groq AI
