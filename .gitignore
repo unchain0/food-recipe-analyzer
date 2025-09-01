@@ -45,3 +45,4 @@ pids
 
 # Netlify
 .netlify/
+.windsurf/
