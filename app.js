@@ -148,11 +148,17 @@ class FoodAnalyzerApp {
             // Analyze food with Groq Vision
             const analysis = await this.groqAPI.analyzeFood(imageData);
             
-            // Generate voice description
-            const audioBlob = await this.groqAPI.generateVoiceDescription(
-                analysis.foodDetected, 
-                analysis.recipes
-            );
+            // Try to generate voice description (optional)
+            let audioBlob = null;
+            try {
+                audioBlob = await this.groqAPI.generateVoiceDescription(
+                    analysis.foodDetected, 
+                    analysis.recipes
+                );
+            } catch (audioError) {
+                console.warn('Voice generation failed, continuing without audio:', audioError);
+                // Continue without audio - it's not critical
+            }
 
             // Display results
             this.showResults(analysis, audioBlob);
@@ -185,9 +191,20 @@ class FoodAnalyzerApp {
         // Show food detected
         this.foodDetectedEl.textContent = analysis.foodDetected;
         
-        // Setup audio player
-        const audioUrl = URL.createObjectURL(audioBlob);
-        this.audioPlayer.src = audioUrl;
+        // Setup audio player if audio is available
+        if (audioBlob) {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            this.audioPlayer.src = audioUrl;
+            this.audioPlayer.parentElement.style.display = 'block';
+            
+            // Auto-play audio (with user gesture requirement handling)
+            this.audioPlayer.play().catch(error => {
+                console.log('Auto-play prevented, user interaction required:', error);
+            });
+        } else {
+            // Hide audio player if no audio available
+            this.audioPlayer.parentElement.style.display = 'none';
+        }
         
         // Update recipe button labels
         this.recipeButtons.forEach((btn, index) => {
@@ -201,11 +218,6 @@ class FoodAnalyzerApp {
         
         // Show results section
         this.resultsSection.classList.remove('hidden');
-        
-        // Auto-play audio (with user gesture requirement handling)
-        this.audioPlayer.play().catch(error => {
-            console.log('Auto-play prevented, user interaction required:', error);
-        });
     }
 
     showRecipe(index) {
