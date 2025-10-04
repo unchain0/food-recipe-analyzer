@@ -29,6 +29,9 @@ class FoodAnalyzerApp {
         // API setup elements
         this.apiKeyInput = document.getElementById('groq-api-key');
         this.saveApiKeyBtn = document.getElementById('save-api-key');
+        
+        // Language selector
+        this.languageSelect = document.getElementById('language-select');
     }
 
     setupEventListeners() {
@@ -52,6 +55,12 @@ class FoodAnalyzerApp {
             if (e.key === 'Enter') this.saveApiKey();
         });
         
+        // Language selector
+        this.languageSelect.addEventListener('change', (e) => {
+            this.groqAPI.setLanguage(e.target.value);
+            this.showSuccess('Language updated! Your next analysis will be in ' + e.target.options[e.target.selectedIndex].text);
+        });
+        
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -65,6 +74,10 @@ class FoodAnalyzerApp {
     }
 
     async checkApiKeyAndInitialize() {
+        // Set language selector to detected language
+        const currentLang = this.groqAPI.getLanguage();
+        this.languageSelect.value = currentLang;
+        
         if (this.groqAPI.isConfigured()) {
             this.hideApiSetup();
             await this.initializeCamera();
@@ -148,11 +161,17 @@ class FoodAnalyzerApp {
             // Analyze food with Groq Vision
             const analysis = await this.groqAPI.analyzeFood(imageData);
             
-            // Generate voice description
-            const audioBlob = await this.groqAPI.generateVoiceDescription(
-                analysis.foodDetected, 
-                analysis.recipes
-            );
+            // Try to generate voice description (optional)
+            let audioBlob = null;
+            try {
+                audioBlob = await this.groqAPI.generateVoiceDescription(
+                    analysis.foodDetected, 
+                    analysis.recipes
+                );
+            } catch (audioError) {
+                console.warn('Voice generation failed, continuing without audio:', audioError);
+                // Continue without audio - it's not critical
+            }
 
             // Display results
             this.showResults(analysis, audioBlob);
@@ -185,9 +204,20 @@ class FoodAnalyzerApp {
         // Show food detected
         this.foodDetectedEl.textContent = analysis.foodDetected;
         
-        // Setup audio player
-        const audioUrl = URL.createObjectURL(audioBlob);
-        this.audioPlayer.src = audioUrl;
+        // Setup audio player if audio is available
+        if (audioBlob) {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            this.audioPlayer.src = audioUrl;
+            this.audioPlayer.parentElement.style.display = 'block';
+            
+            // Auto-play audio (with user gesture requirement handling)
+            this.audioPlayer.play().catch(error => {
+                console.log('Auto-play prevented, user interaction required:', error);
+            });
+        } else {
+            // Hide audio player if no audio available
+            this.audioPlayer.parentElement.style.display = 'none';
+        }
         
         // Update recipe button labels
         this.recipeButtons.forEach((btn, index) => {
@@ -201,11 +231,6 @@ class FoodAnalyzerApp {
         
         // Show results section
         this.resultsSection.classList.remove('hidden');
-        
-        // Auto-play audio (with user gesture requirement handling)
-        this.audioPlayer.play().catch(error => {
-            console.log('Auto-play prevented, user interaction required:', error);
-        });
     }
 
     showRecipe(index) {

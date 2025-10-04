@@ -6,6 +6,75 @@ class GroqAPI {
         this.ttsModel = 'playai-tts';
         this.voice = 'Fritz-PlayAI';
         this.recipes = [];
+        this.language = this.detectLanguage();
+    }
+
+    // Detect user's preferred language from browser
+    detectLanguage() {
+        try {
+            // Check if language is stored
+            const stored = localStorage.getItem('preferred_language');
+            if (stored) return stored;
+            
+            // Detect from browser
+            const browserLang = navigator.language || navigator.userLanguage;
+            
+            // Map browser language codes to our supported languages
+            if (browserLang.startsWith('pt-BR') || browserLang.startsWith('pt_BR')) {
+                return 'pt-BR';
+            } else if (browserLang.startsWith('pt')) {
+                return 'pt';
+            } else if (browserLang.startsWith('es')) {
+                return 'es';
+            } else if (browserLang.startsWith('fr')) {
+                return 'fr';
+            } else if (browserLang.startsWith('de')) {
+                return 'de';
+            } else if (browserLang.startsWith('it')) {
+                return 'it';
+            } else if (browserLang.startsWith('ja')) {
+                return 'ja';
+            } else if (browserLang.startsWith('zh')) {
+                return 'zh';
+            }
+            
+            // Default to English
+            return 'en';
+        } catch (error) {
+            console.warn('Failed to detect language:', error);
+            return 'en';
+        }
+    }
+
+    // Set language preference
+    setLanguage(language) {
+        this.language = language;
+        try {
+            localStorage.setItem('preferred_language', language);
+        } catch (error) {
+            console.warn('Failed to save language preference:', error);
+        }
+    }
+
+    // Get current language
+    getLanguage() {
+        return this.language;
+    }
+
+    // Get language name for prompts
+    getLanguageName(langCode) {
+        const languageNames = {
+            'en': 'English',
+            'pt-BR': 'Brazilian Portuguese',
+            'pt': 'Portuguese',
+            'es': 'Spanish',
+            'fr': 'French',
+            'de': 'German',
+            'it': 'Italian',
+            'ja': 'Japanese',
+            'zh': 'Chinese'
+        };
+        return languageNames[langCode] || 'English';
     }
 
     setApiKey(apiKey) {
@@ -69,7 +138,9 @@ class GroqAPI {
                             content: [
                                 {
                                     type: 'text',
-                                    text: `Analyze this image and identify what food items you can see. Then provide exactly 3 different recipe suggestions that can be made with these ingredients. 
+                                    text: `Analyze this image and identify what food items you can see. Then provide exactly 3 different recipe suggestions that can be made with these ingredients.
+
+IMPORTANT: Respond in ${this.getLanguageName(this.language)}. All text fields must be in ${this.getLanguageName(this.language)}.
 
 Format your response as JSON with this exact structure:
 {
@@ -124,10 +195,45 @@ Format your response as JSON with this exact structure:
             }
 
             const data = await response.json();
-            const content = data.choices[0].message.content;
+            let content = data.choices[0].message.content;
+            
+            // Clean up the content - remove markdown code blocks if present
+            content = content.trim();
+            
+            // Remove markdown JSON code blocks (```json ... ``` or ``` ... ```)
+            if (content.startsWith('```')) {
+                // Extract content between code blocks
+                const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+                if (jsonMatch && jsonMatch[1]) {
+                    content = jsonMatch[1].trim();
+                } else {
+                    // If no proper match, try to remove the code block markers
+                    content = content.replace(/```(?:json)?/g, '').trim();
+                }
+            }
             
             // Parse JSON response
-            const analysisResult = JSON.parse(content);
+            let analysisResult;
+            try {
+                analysisResult = JSON.parse(content);
+            } catch (parseError) {
+                console.error('Failed to parse JSON:', content);
+                console.error('Parse error:', parseError);
+                
+                // Try to find JSON object in the content
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    analysisResult = JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('Invalid JSON response from API. Please try again.');
+                }
+            }
+            
+            // Validate the response structure
+            if (!analysisResult.foodDetected || !analysisResult.recipes || !Array.isArray(analysisResult.recipes)) {
+                throw new Error('Invalid response structure from API');
+            }
+            
             this.recipes = analysisResult.recipes;
             
             return analysisResult;
