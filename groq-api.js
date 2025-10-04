@@ -6,6 +6,75 @@ class GroqAPI {
         this.ttsModel = 'playai-tts';
         this.voice = 'Fritz-PlayAI';
         this.recipes = [];
+        this.language = this.detectLanguage();
+    }
+
+    // Detect user's preferred language from browser
+    detectLanguage() {
+        try {
+            // Check if language is stored
+            const stored = localStorage.getItem('preferred_language');
+            if (stored) return stored;
+            
+            // Detect from browser
+            const browserLang = navigator.language || navigator.userLanguage;
+            
+            // Map browser language codes to our supported languages
+            if (browserLang.startsWith('pt-BR') || browserLang.startsWith('pt_BR')) {
+                return 'pt-BR';
+            } else if (browserLang.startsWith('pt')) {
+                return 'pt';
+            } else if (browserLang.startsWith('es')) {
+                return 'es';
+            } else if (browserLang.startsWith('fr')) {
+                return 'fr';
+            } else if (browserLang.startsWith('de')) {
+                return 'de';
+            } else if (browserLang.startsWith('it')) {
+                return 'it';
+            } else if (browserLang.startsWith('ja')) {
+                return 'ja';
+            } else if (browserLang.startsWith('zh')) {
+                return 'zh';
+            }
+            
+            // Default to English
+            return 'en';
+        } catch (error) {
+            console.warn('Failed to detect language:', error);
+            return 'en';
+        }
+    }
+
+    // Set language preference
+    setLanguage(language) {
+        this.language = language;
+        try {
+            localStorage.setItem('preferred_language', language);
+        } catch (error) {
+            console.warn('Failed to save language preference:', error);
+        }
+    }
+
+    // Get current language
+    getLanguage() {
+        return this.language;
+    }
+
+    // Get language name for prompts
+    getLanguageName(langCode) {
+        const languageNames = {
+            'en': 'English',
+            'pt-BR': 'Brazilian Portuguese',
+            'pt': 'Portuguese',
+            'es': 'Spanish',
+            'fr': 'French',
+            'de': 'German',
+            'it': 'Italian',
+            'ja': 'Japanese',
+            'zh': 'Chinese'
+        };
+        return languageNames[langCode] || 'English';
     }
 
     setApiKey(apiKey) {
@@ -69,7 +138,9 @@ class GroqAPI {
                             content: [
                                 {
                                     type: 'text',
-                                    text: `Analyze this image and identify what food items you can see. Then provide exactly 3 different recipe suggestions that can be made with these ingredients. 
+                                    text: `Analyze this image and identify what food items you can see. Then provide exactly 3 different recipe suggestions that can be made with these ingredients.
+
+IMPORTANT: Respond in ${this.getLanguageName(this.language)}. All text fields must be in ${this.getLanguageName(this.language)}.
 
 Format your response as JSON with this exact structure:
 {

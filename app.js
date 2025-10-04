@@ -29,6 +29,9 @@ class FoodAnalyzerApp {
         // API setup elements
         this.apiKeyInput = document.getElementById('groq-api-key');
         this.saveApiKeyBtn = document.getElementById('save-api-key');
+        
+        // Language selector
+        this.languageSelect = document.getElementById('language-select');
     }
 
     setupEventListeners() {
@@ -52,6 +55,12 @@ class FoodAnalyzerApp {
             if (e.key === 'Enter') this.saveApiKey();
         });
         
+        // Language selector
+        this.languageSelect.addEventListener('change', (e) => {
+            this.groqAPI.setLanguage(e.target.value);
+            this.showSuccess('Language updated! Your next analysis will be in ' + e.target.options[e.target.selectedIndex].text);
+        });
+        
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -65,6 +74,10 @@ class FoodAnalyzerApp {
     }
 
     async checkApiKeyAndInitialize() {
+        // Set language selector to detected language
+        const currentLang = this.groqAPI.getLanguage();
+        this.languageSelect.value = currentLang;
+        
         if (this.groqAPI.isConfigured()) {
             this.hideApiSetup();
             await this.initializeCamera();
