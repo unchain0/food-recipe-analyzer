@@ -152,6 +152,9 @@ class FoodAnalyzerApp {
             this.isAnalyzing = true;
             this.showLoading();
 
+            // Pause camera stream to free resources during analysis
+            this.cameraManager.pauseStream();
+
             // Capture image from camera
             const imageData = this.cameraManager.captureImage();
             if (!imageData) {
@@ -180,6 +183,8 @@ class FoodAnalyzerApp {
             console.error('Analysis failed:', error);
             this.showError(`Analysis failed: ${error.message}`);
             this.hideLoading();
+            // Resume camera on error
+            this.cameraManager.resumeStream();
         } finally {
             this.isAnalyzing = false;
         }
@@ -196,6 +201,9 @@ class FoodAnalyzerApp {
         this.loadingSection.classList.add('hidden');
         this.analyzeBtn.disabled = false;
         this.analyzeBtn.textContent = '📸 Analyze Food';
+        
+        // Resume camera stream when loading is done
+        this.cameraManager.resumeStream();
     }
 
     showResults(analysis, audioBlob) {
@@ -319,20 +327,12 @@ class FoodAnalyzerApp {
 
     pauseCamera() {
         // Pause video stream to save resources
-        if (this.cameraManager.stream) {
-            this.cameraManager.stream.getVideoTracks().forEach(track => {
-                track.enabled = false;
-            });
-        }
+        this.cameraManager.pauseStream();
     }
 
     resumeCamera() {
         // Resume video stream
-        if (this.cameraManager.stream) {
-            this.cameraManager.stream.getVideoTracks().forEach(track => {
-                track.enabled = true;
-            });
-        }
+        this.cameraManager.resumeStream();
     }
 
     // Clean up resources when page unloads

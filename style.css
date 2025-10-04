@@ -207,7 +207,8 @@ header p {
     display: block;
     margin: 0 auto;
     border: 2px solid var(--gray-200);
-    transition: border-color var(--transition-base);
+    transition: border-color var(--transition-base), opacity var(--transition-base);
+    will-change: opacity;
 }
 
 #camera:focus {

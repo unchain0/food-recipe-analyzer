@@ -197,6 +197,9 @@ Format your response as JSON with this exact structure:
             const data = await response.json();
             let content = data.choices[0].message.content;
             
+            // Free memory early
+            data.choices = null;
+            
             // Clean up the content - remove markdown code blocks if present
             content = content.trim();
             

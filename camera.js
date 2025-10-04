@@ -92,20 +92,59 @@ class CameraManager {
         }
 
         try {
-            // Set canvas dimensions to match video
-            this.canvas.width = this.video.videoWidth;
-            this.canvas.height = this.video.videoHeight;
+            // Optimize canvas size for performance
+            const maxWidth = 1024; // Max width for analysis
+            const maxHeight = 768; // Max height for analysis
+            
+            let width = this.video.videoWidth;
+            let height = this.video.videoHeight;
+            
+            // Scale down if needed to reduce image size
+            if (width > maxWidth || height > maxHeight) {
+                const aspectRatio = width / height;
+                if (width > height) {
+                    width = maxWidth;
+                    height = maxWidth / aspectRatio;
+                } else {
+                    height = maxHeight;
+                    width = maxHeight * aspectRatio;
+                }
+            }
+            
+            // Set optimized canvas dimensions
+            this.canvas.width = width;
+            this.canvas.height = height;
 
-            // Draw current video frame to canvas
-            this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+            // Draw current video frame to canvas with optimized size
+            this.ctx.drawImage(this.video, 0, 0, width, height);
 
-            // Convert to base64 image
-            const imageData = this.canvas.toDataURL('image/jpeg', 0.8);
-            console.log('Image captured successfully');
+            // Convert to base64 with reduced quality for faster upload
+            const imageData = this.canvas.toDataURL('image/jpeg', 0.7);
+            console.log('Image captured successfully', `${width}x${height}`);
             return imageData;
         } catch (error) {
             console.error('Error capturing image:', error);
             return null;
+        }
+    }
+
+    // Pause video stream to save resources
+    pauseStream() {
+        if (this.stream) {
+            this.stream.getVideoTracks().forEach(track => {
+                track.enabled = false;
+            });
+            this.video.style.opacity = '0.5';
+        }
+    }
+
+    // Resume video stream
+    resumeStream() {
+        if (this.stream) {
+            this.stream.getVideoTracks().forEach(track => {
+                track.enabled = true;
+            });
+            this.video.style.opacity = '1';
         }
     }
 
