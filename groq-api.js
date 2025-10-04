@@ -124,10 +124,45 @@ Format your response as JSON with this exact structure:
             }
 
             const data = await response.json();
-            const content = data.choices[0].message.content;
+            let content = data.choices[0].message.content;
+            
+            // Clean up the content - remove markdown code blocks if present
+            content = content.trim();
+            
+            // Remove markdown JSON code blocks (```json ... ``` or ``` ... ```)
+            if (content.startsWith('```')) {
+                // Extract content between code blocks
+                const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+                if (jsonMatch && jsonMatch[1]) {
+                    content = jsonMatch[1].trim();
+                } else {
+                    // If no proper match, try to remove the code block markers
+                    content = content.replace(/```(?:json)?/g, '').trim();
+                }
+            }
             
             // Parse JSON response
-            const analysisResult = JSON.parse(content);
+            let analysisResult;
+            try {
+                analysisResult = JSON.parse(content);
+            } catch (parseError) {
+                console.error('Failed to parse JSON:', content);
+                console.error('Parse error:', parseError);
+                
+                // Try to find JSON object in the content
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    analysisResult = JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('Invalid JSON response from API. Please try again.');
+                }
+            }
+            
+            // Validate the response structure
+            if (!analysisResult.foodDetected || !analysisResult.recipes || !Array.isArray(analysisResult.recipes)) {
+                throw new Error('Invalid response structure from API');
+            }
+            
             this.recipes = analysisResult.recipes;
             
             return analysisResult;
