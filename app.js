@@ -32,6 +32,16 @@ class FoodAnalyzerApp {
         
         // Language selector
         this.languageSelect = document.getElementById('language-select');
+        
+        // New feature elements
+        this.switchCameraBtn = document.getElementById('switch-camera-btn');
+        this.uploadBtn = document.getElementById('upload-btn');
+        this.fileUpload = document.getElementById('file-upload');
+        this.historyBtn = document.getElementById('history-btn');
+        this.historyModal = document.getElementById('history-modal');
+        this.closeHistoryBtn = document.querySelector('.close-history');
+        this.historyList = document.getElementById('history-list');
+        this.clearHistoryBtn = document.getElementById('clear-history-btn');
     }
 
     setupEventListeners() {
@@ -60,6 +70,21 @@ class FoodAnalyzerApp {
             this.groqAPI.setLanguage(e.target.value);
             this.showSuccess('Language updated! Your next analysis will be in ' + e.target.options[e.target.selectedIndex].text);
         });
+        
+        // Switch camera button
+        this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
+        
+        // Upload button
+        this.uploadBtn.addEventListener('click', () => this.fileUpload.click());
+        this.fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
+        
+        // History button
+        this.historyBtn.addEventListener('click', () => this.showHistory());
+        this.closeHistoryBtn.addEventListener('click', () => this.hideHistory());
+        this.historyModal.addEventListener('click', (e) => {
+            if (e.target === this.historyModal) this.hideHistory();
+        });
+        this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
         
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
@@ -176,6 +201,9 @@ class FoodAnalyzerApp {
                 // Continue without audio - it's not critical
             }
 
+            // Save to history
+            this.saveToHistory(analysis);
+            
             // Display results
             this.showResults(analysis, audioBlob);
 
@@ -333,6 +361,214 @@ class FoodAnalyzerApp {
     resumeCamera() {
         // Resume video stream
         this.cameraManager.resumeStream();
+    }
+
+    // Switch camera (front/back)
+    async switchCamera() {
+        try {
+            this.switchCameraBtn.disabled = true;
+            this.switchCameraBtn.textContent = '🔄 Switching...';
+            
+            const success = await this.cameraManager.switchCamera();
+            
+            if (success) {
+                this.showSuccess('Camera switched successfully!');
+            } else {
+                this.showError('Failed to switch camera');
+            }
+        } catch (error) {
+            console.error('Error switching camera:', error);
+            this.showError('Failed to switch camera');
+        } finally {
+            this.switchCameraBtn.disabled = false;
+            this.switchCameraBtn.textContent = '🔄 Switch';
+        }
+    }
+
+    // Handle file upload from gallery
+    async handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            this.showError('Please select a valid image file');
+            return;
+        }
+
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            this.showError('Image is too large. Please select an image under 10MB');
+            return;
+        }
+
+        try {
+            this.isAnalyzing = true;
+            this.showLoading();
+
+            // Convert file to base64
+            const reader = new FileReader();
+            const imageData = await new Promise((resolve, reject) => {
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            // Analyze food with Groq Vision
+            const analysis = await this.groqAPI.analyzeFood(imageData);
+            
+            // Try to generate voice description (optional)
+            let audioBlob = null;
+            try {
+                audioBlob = await this.groqAPI.generateVoiceDescription(
+                    analysis.foodDetected, 
+                    analysis.recipes
+                );
+            } catch (audioError) {
+                console.warn('Voice generation failed, continuing without audio:', audioError);
+            }
+
+            // Save to history
+            this.saveToHistory(analysis);
+            
+            // Display results
+            this.showResults(analysis, audioBlob);
+
+        } catch (error) {
+            console.error('Analysis failed:', error);
+            this.showError(`Analysis failed: ${error.message}`);
+            this.hideLoading();
+        } finally {
+            this.isAnalyzing = false;
+            // Clear file input
+            event.target.value = '';
+        }
+    }
+
+    // Save analysis to history
+    saveToHistory(analysis) {
+        try {
+            const history = this.getHistory();
+            
+            const historyItem = {
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                foodDetected: analysis.foodDetected,
+                recipes: analysis.recipes
+            };
+            
+            // Add to beginning of array
+            history.unshift(historyItem);
+            
+            // Keep only last 10 items
+            const trimmedHistory = history.slice(0, 10);
+            
+            localStorage.setItem('analysis_history', JSON.stringify(trimmedHistory));
+        } catch (error) {
+            console.warn('Failed to save to history:', error);
+        }
+    }
+
+    // Get history from localStorage
+    getHistory() {
+        try {
+            const history = localStorage.getItem('analysis_history');
+            return history ? JSON.parse(history) : [];
+        } catch (error) {
+            console.warn('Failed to load history:', error);
+            return [];
+        }
+    }
+
+    // Show history modal
+    showHistory() {
+        const history = this.getHistory();
+        
+        if (history.length === 0) {
+            this.historyList.innerHTML = `
+                <div class="history-empty">
+                    <div class="history-empty-icon">📭</div>
+                    <p>No analysis history yet</p>
+                    <p style="font-size: var(--font-size-sm); margin-top: var(--space-2);">Start analyzing food to build your history!</p>
+                </div>
+            `;
+        } else {
+            this.historyList.innerHTML = history.map(item => {
+                const date = new Date(item.timestamp);
+                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                return `
+                    <div class="history-item" data-history-id="${item.id}">
+                        <div class="history-item-header">
+                            <div class="history-item-food">${item.foodDetected}</div>
+                            <div class="history-item-date">${dateStr}</div>
+                        </div>
+                        <div class="history-item-recipes">
+                            ${item.recipes.map(recipe => 
+                                `<span class="history-recipe-tag">${recipe.name}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Add click handlers to history items
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.historyId);
+                    this.loadHistoryItem(id);
+                });
+            });
+        }
+        
+        this.historyModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Hide history modal
+    hideHistory() {
+        this.historyModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Load a history item
+    loadHistoryItem(id) {
+        const history = this.getHistory();
+        const item = history.find(h => h.id === id);
+        
+        if (item) {
+            this.groqAPI.recipes = item.recipes;
+            this.hideHistory();
+            
+            // Display without audio (loading from history)
+            this.foodDetectedEl.textContent = item.foodDetected;
+            this.audioPlayer.parentElement.style.display = 'none';
+            
+            this.recipeButtons.forEach((btn, index) => {
+                if (item.recipes[index]) {
+                    btn.textContent = item.recipes[index].name;
+                    btn.disabled = false;
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+            
+            this.resultsSection.classList.remove('hidden');
+            this.showSuccess('Loaded from history!');
+        }
+    }
+
+    // Clear all history
+    clearHistory() {
+        if (confirm('Are you sure you want to clear all analysis history? This cannot be undone.')) {
+            try {
+                localStorage.removeItem('analysis_history');
+                this.hideHistory();
+                this.showSuccess('History cleared successfully!');
+            } catch (error) {
+                this.showError('Failed to clear history');
+            }
+        }
     }
 
     // Clean up resources when page unloads

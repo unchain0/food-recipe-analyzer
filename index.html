@@ -27,6 +27,11 @@
                     <option value="zh">中文</option>
                 </select>
             </div>
+            
+            <!-- History Button -->
+            <button id="history-btn" class="history-btn" title="View Analysis History">
+                📜 History
+            </button>
         </header>
 
         <main>
@@ -36,6 +41,13 @@
                 <canvas id="canvas" style="display: none;"></canvas>
 
                 <div class="camera-controls">
+                    <input type="file" id="file-upload" accept="image/*" style="display: none;">
+                    <button id="upload-btn" class="secondary-btn" title="Upload from Gallery">
+                        🖼️ Upload Photo
+                    </button>
+                    <button id="switch-camera-btn" class="secondary-btn" title="Switch Camera">
+                        🔄 Switch
+                    </button>
                     <button id="analyze-btn" class="analyze-btn">
                         📸 Analyze Food
                     </button>
@@ -75,6 +87,16 @@
                 <div class="modal-content">
                     <span class="close">&times;</span>
                     <div id="recipe-detail"></div>
+                </div>
+            </div>
+
+            <!-- History Modal -->
+            <div id="history-modal" class="modal hidden">
+                <div class="modal-content">
+                    <span class="close-history">&times;</span>
+                    <h2>📜 Analysis History</h2>
+                    <div id="history-list"></div>
+                    <button id="clear-history-btn" class="danger-btn">🗑️ Clear History</button>
                 </div>
             </div>
 
